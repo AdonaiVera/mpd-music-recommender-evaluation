@@ -101,6 +101,18 @@ While basic preprocessing has been done, the next recommended step is to perform
 
    *Tip:* You can create these plots using functions in the `plots.py` file and extend the analysis in `analysis.py`.
 
+
+## Graphs Information
+
+### Small version: 
+Train, validation, and test splits created.
+Total Songs: 122902
+Total Playlists: 6000
+Total Edges: 394387
+
+Nodes: Songs, playlist
+Edges: Representing user interactions as graph connections.
+
 ## Future Work
 
 Building magic with the models ...
