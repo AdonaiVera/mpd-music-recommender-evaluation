@@ -134,15 +134,45 @@ class SpotifyGraphPreprocessor:
 
     def summarize_data(self):
         """
-        Provides a summary of the processed dataset.
+        Summarizes the processed dataset and saves it to info.json.
         """
         songs = pd.read_csv(os.path.join(self.processed_folder, "songs.csv"))
         playlists = pd.read_csv(os.path.join(self.processed_folder, "playlists.csv"))
         edges = pd.read_csv(os.path.join(self.processed_folder, "edges.csv"))
 
-        print(f"Total Songs: {len(songs)}")
-        print(f"Total Playlists: {len(playlists)}")
-        print(f"Total Edges: {len(edges)}")
+        # Compute summary
+        total_songs = len(songs)
+        total_playlists = len(playlists)
+        total_edges = len(edges)
+
+        # Split edges into train, validation, and test
+        train_edges = pd.read_csv(os.path.join(self.processed_folder, "train_edges.csv"))
+        val_edges = pd.read_csv(os.path.join(self.processed_folder, "val_edges.csv"))
+        test_edges = pd.read_csv(os.path.join(self.processed_folder, "test_edges.csv"))
+
+        pos_edges = len(edges[edges['label'] == 1])
+        neg_edges = len(edges[edges['label'] == 0])
+
+        summary = {
+            "files_parsed": len(os.listdir(self.processed_folder)),
+            "playlists": total_playlists,
+            "songs": total_songs,
+            "train_edges": len(train_edges),
+            "val_edges": len(val_edges),
+            "test_edges": len(test_edges),
+            "pos_edges": pos_edges,
+            "neg_edges": neg_edges,
+        }
+
+        # Save to info.json
+        info_path = os.path.join(self.processed_folder, "info.json")
+        with open(info_path, "w") as json_file:
+            json.dump(summary, json_file, indent=4)
+
+        # Print summary
+        print(f"Summary saved to {info_path}")
+        print(json.dumps(summary, indent=4))
+
 
     def pipeline(self, DATA_FOLDER, DATASET_URL):
         # Running the full pipeline as a function in case.
