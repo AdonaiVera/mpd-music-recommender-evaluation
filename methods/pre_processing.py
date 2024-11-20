@@ -151,7 +151,7 @@ def process_slice(slice):
         playlists_df_list.append(playlist)
 
 
-def pre_process_dataset(path, new_path):
+def pre_process_dataset(path, new_path, small_version=False):
     '''
     Given the directory of the dataset, for each slice first modified it by
     the rules described in generate_new_slice.
@@ -182,16 +182,25 @@ def pre_process_dataset(path, new_path):
     assert isinstance(new_path, str)
 
     filenames = os.listdir(path)
+    
+
+    limit = 5
+    nCount = 0  
     # go through each file in the directory
     for filename in tqdm(filenames):
         # check if the file is a slice of the dataset
         if filename.startswith("mpd.slice.") and filename.endswith(".json"):
+            
             # load the slice
             with open(os.sep.join((path, filename))) as f:
                 mpd_slice = json.load(f)
 
             # process this slice
             process_slice(mpd_slice)
+            nCount+=1
+            
+            if nCount==limit and small_version:
+                break
 
     del track_uri_to_id
     # generate tracks_df and playlists_df
@@ -296,5 +305,8 @@ if __name__ == "__main__":
         print(f"[INFO] Downloading the data ...")
         download_and_extract_dataset(DATASET_URL, "data/row_data.zip", DATA_RAW)
 
+    # If you want to have small version of dataset set true
+    small_version = True
+
     # Pre-process the dataset
-    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED)
+    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED, small_version)
