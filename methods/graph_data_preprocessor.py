@@ -79,6 +79,7 @@ class SpotifyGraphPreprocessor:
                     })
 
                     # Process tracks
+                    playlist_song_ids = set()
                     for track in playlist["tracks"]:
                         track_uri = track["track_uri"]
                         if track_uri not in song_id_map:
@@ -91,16 +92,27 @@ class SpotifyGraphPreprocessor:
                             })
                             song_id_counter += 1
                         
-                        # Add edges
+                        # Add positive edge
+                        playlist_song_ids.add(song_id_map[track_uri])
                         edge_data.append({
                             "playlist_id": playlist_id_counter,
                             "song_id": song_id_map[track_uri],
                             "label": 1  # Positive edge
                         })
 
+                    # Add negative edges
+                    all_song_ids = set(song_id_map.values())
+                    negative_song_ids = all_song_ids - playlist_song_ids
+                    for neg_song_id in random.sample(negative_song_ids, min(len(negative_song_ids), len(playlist_song_ids))):
+                        edge_data.append({
+                            "playlist_id": playlist_id_counter,
+                            "song_id": neg_song_id,
+                            "label": 0  # Negative edge
+                        })
+
                     playlist_id_counter += 1
 
-                if nCount==limit and small_version:
+                if nCount == limit and small_version:
                     break
                 
                 nCount += 1
@@ -110,6 +122,7 @@ class SpotifyGraphPreprocessor:
         pd.DataFrame(playlist_data).to_csv(os.path.join(self.processed_folder, "playlists.csv"), index=False)
         pd.DataFrame(edge_data).to_csv(os.path.join(self.processed_folder, "edges.csv"), index=False)
         print("Processing complete!")
+
 
     def create_train_test_val_splits(self, splits=(0.7, 0.15, 0.15)):
         """
