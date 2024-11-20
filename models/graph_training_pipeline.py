@@ -31,6 +31,7 @@ class GraphTrainingPipeline:
         :param config: Dictionary containing hyperparameters
         """
         self.cur_dir = cur_dir
+        self.save_path="results/training_metrics.html"
         self.model_arch = model_arch
         self.device = device
         self.config = config
@@ -61,10 +62,10 @@ class GraphTrainingPipeline:
             output_data["val_auc_scores"],
             output_data["test_auc_scores"],
             num_playlists,
+            save_path=self.save_path,
         )
 
         # Save results
-        self.data.save_plot(fig, config)
         self.data.save_model_weights(trained_model)
         self.data.save_training_data(output_data)
 
@@ -176,23 +177,127 @@ class GraphTrainingPipeline:
                 "f1": f1_score(data["label_ids"].numpy(), preds),
             }
 
-    def _create_loss_auc_plot(self, train_losses, train_auc, val_auc, test_auc, num_playlists):
+    def _create_loss_auc_plot(self, train_losses, train_auc, val_auc, test_auc, num_playlists, save_path):
         """
-        Create a visualization for loss and AUC metrics over epochs.
+        Create and save a polished and interactive visualization for loss and AUC metrics over epochs.
         """
         epochs = list(range(1, self.config["num_epochs"] + 1))
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=epochs, y=train_losses, mode="lines", name="Train Loss", line=dict(color="red", dash="dot")))
-        fig.add_trace(go.Scatter(x=epochs, y=train_auc, mode="lines", name="Train AUC", line=dict(color="blue")))
-        fig.add_trace(go.Scatter(x=epochs, y=val_auc, mode="lines", name="Validation AUC", line=dict(color="green")))
-        fig.add_trace(go.Scatter(x=epochs, y=test_auc, mode="lines", name="Test AUC", line=dict(color="orange")))
 
-        fig.update_layout(
-            title=f"<b>Training Metrics</b><br><span style='font-size:14px'>Playlists: {num_playlists}</span>",
-            xaxis_title="Epochs",
-            yaxis_title="Metrics",
-            width=900,
-            height=600,
+        fig = go.Figure()
+
+        # Add traces for each metric
+        fig.add_trace(
+            go.Scatter(
+                x=epochs,
+                y=train_losses,
+                mode="lines",
+                name="Train Loss",
+                line=dict(color="red", dash="dot"),
+                hovertemplate="Epoch %{x}<br>Loss: %{y:.4f}<extra></extra>"
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=epochs,
+                y=train_auc,
+                mode="lines+markers",
+                name="Train AUC",
+                line=dict(color="blue", width=2),
+                marker=dict(size=6, symbol="circle"),
+                hovertemplate="Epoch %{x}<br>Train AUC: %{y:.4f}<extra></extra>"
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=epochs,
+                y=val_auc,
+                mode="lines+markers",
+                name="Validation AUC",
+                line=dict(color="green", width=2),
+                marker=dict(size=6, symbol="square"),
+                hovertemplate="Epoch %{x}<br>Validation AUC: %{y:.4f}<extra></extra>"
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=epochs,
+                y=test_auc,
+                mode="lines+markers",
+                name="Test AUC",
+                line=dict(color="orange", width=2),
+                marker=dict(size=6, symbol="triangle-up"),
+                hovertemplate="Epoch %{x}<br>Test AUC: %{y:.4f}<extra></extra>"
+            )
         )
 
-        return fig, {"scrollZoom": False, "staticPlot": False}
+        # Update layout for polished aesthetics
+        fig.update_layout(
+            title=dict(
+                text=f"<b>Training Metrics Over Epochs</b><br><span style='font-size:14px'>Playlists: {num_playlists}</span>",
+                x=0.5,
+                y=0.9,
+                font=dict(family="Arial", size=24)
+            ),
+            xaxis=dict(
+                title="Epochs",
+                titlefont=dict(size=16),
+                tickfont=dict(size=12),
+                showgrid=True,
+                gridcolor="lightgrey"
+            ),
+            yaxis=dict(
+                title="Metrics (Loss / AUC)",
+                titlefont=dict(size=16),
+                tickfont=dict(size=12),
+                showgrid=True,
+                gridcolor="lightgrey",
+                range=[0, 1]  # Ensures values are always in a valid range
+            ),
+            width=1000,
+            height=600,
+            legend=dict(
+                title="Legend",
+                font=dict(size=12),
+                orientation="h",
+                y=-0.2,
+                x=0.5,
+                xanchor="center"
+            ),
+            margin=dict(l=40, r=40, t=80, b=60),
+            hovermode="x unified",
+            template="plotly_white"
+        )
+
+        # Add annotations to highlight significant points (optional)
+        fig.add_annotation(
+            x=epochs[-1],
+            y=train_losses[-1],
+            text=f"Final Loss: {train_losses[-1]:.4f}",
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=-40
+        )
+        fig.add_annotation(
+            x=epochs[-1],
+            y=test_auc[-1],
+            text=f"Final Test AUC: {test_auc[-1]:.4f}",
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=40
+        )
+
+        # Config for interactivity
+        config = {
+            "scrollZoom": True,
+            "displayModeBar": True,
+            "staticPlot": False,
+            "displaylogo": False
+        }
+
+        # Save the plot
+        fig.write_html(save_path, config=config)
+        print(f"Plot saved at: {save_path}")
+
+        return fig, config

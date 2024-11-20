@@ -11,7 +11,7 @@ class DataManager:
         """
         self.cur_dir = cur_dir
         self.data_dir = os.path.join(cur_dir, "processed_graphs")
-        self.model_dir = os.path.join(cur_dir, "weights/model")
+        self.model_dir = "models/weights"
         self.info_path = os.path.join(self.data_dir, "info.json")
 
     # Get Methods
@@ -79,13 +79,6 @@ class DataManager:
                 "label_ids": torch.LongTensor(test_edges["label"].values),
             },
         }
-
-    # Save Methods
-    def save_plot(self, fig, config):
-        """
-        Saves the training plot to the model directory.
-        """
-        fig.write_html(os.path.join(self.model_dir, "training_visual.html"), config=config)
 
     def save_model_weights(self, model):
         """

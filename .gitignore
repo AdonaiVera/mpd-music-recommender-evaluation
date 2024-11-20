@@ -4,3 +4,6 @@
 # Ignore data 
 data/
 data_x/
+
+# Folders
+models/weights/
