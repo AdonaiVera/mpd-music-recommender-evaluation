@@ -6,8 +6,7 @@ import plotly.graph_objects as go
 from methods.data_utils import DataManager
 
 class GraphSAGELinkPrediction(nn.Module):
-    def __init__(self, num_playlists, num_songs, playlist_dim, song_dim, 
-                 dropout_prob):
+    def __init__(self, num_playlists, num_songs, playlist_dim, song_dim, dropout_prob):
         super(GraphSAGELinkPrediction, self).__init__()
         self.playlist_embedding = nn.Embedding(num_playlists, playlist_dim)
         self.song_embedding = nn.Embedding(num_songs, song_dim)
@@ -18,9 +17,8 @@ class GraphSAGELinkPrediction(nn.Module):
         playlist_embedded = self.playlist_embedding(playlist_ids)
         song_embedded = self.song_embedding(song_ids)
         concatenated_embeddings = torch.cat((playlist_embedded, song_embedded), dim=1)
-        concatenated_embeddings = self.dropout(concatenated_embeddings)  # Add dropout
+        concatenated_embeddings = self.dropout(concatenated_embeddings)
         prediction = torch.sigmoid(self.fc(concatenated_embeddings))
-
         return prediction
 
 class GraphTrainingPipeline:
@@ -42,9 +40,9 @@ class GraphTrainingPipeline:
         """
         Main function to train the model and save results.
         """
-        num_playlists = self.data.get.num_playlists()
-        num_songs = self.data.get.num_songs()
-        parsed_data = self.data.get.train_model_data()
+        num_playlists =self.data.num_playlists()
+        num_songs = self.data.num_songs()
+        parsed_data = self.data.train_model_data()
 
         # Initialize the model
         if self.model_arch == "GraphSAGE":
@@ -66,9 +64,9 @@ class GraphTrainingPipeline:
         )
 
         # Save results
-        self.data.save.plot(fig, config)
-        self.data.save.model_weights(trained_model)
-        self.data.save.train_data(output_data)
+        self.data.save_plot(fig, config)
+        self.data.save_model_weights(trained_model)
+        self.data.save_training_data(output_data)
 
         return trained_model if return_model else None
 
@@ -83,11 +81,7 @@ class GraphTrainingPipeline:
             torch.tensor(self.config["neg_edge_weight"], device=self.device),
         )
         criterion = nn.BCEWithLogitsLoss(weight=sample_weights)
-
-        if self.config["optimizer"] == "adam":
-            model_optimizer = optim.Adam(
-                model.parameters(), lr=self.config["learning_rate"]
-            )
+        optimizer = optim.Adam(model.parameters(), lr=self.config["learning_rate"])
 
         metrics = {
             "train_losses": [],
@@ -101,7 +95,7 @@ class GraphTrainingPipeline:
 
         for epoch in range(self.config["num_epochs"]):
             model.train()
-            model_optimizer.zero_grad()
+            optimizer.zero_grad()
 
             outputs = model(
                 parsed_data["train"]["playlist_ids"].to(self.device),
@@ -113,7 +107,7 @@ class GraphTrainingPipeline:
             )
             metrics["train_losses"].append(loss.item())
             loss.backward()
-            model_optimizer.step()
+            optimizer.step()
 
             with torch.no_grad():
                 train_auc = self._compute_auc(outputs, parsed_data["train"])
@@ -138,12 +132,17 @@ class GraphTrainingPipeline:
 
         return model, metrics
 
+
     def _compute_auc(self, outputs, data):
         """
-        Compute AUC for predictions.
+        Compute AUC for predictions with single-class handling.
         """
         probs = outputs.cpu().view(-1).numpy()
-        return roc_auc_score(data["label_ids"].numpy(), probs)
+        labels = data["label_ids"].numpy()
+
+        if len(set(labels)) < 2:
+            return None  
+        return roc_auc_score(labels, probs)
 
     def _evaluate_auc(self, model, data):
         """
@@ -156,7 +155,7 @@ class GraphTrainingPipeline:
                 data["song_ids"].to(self.device),
             )
         return self._compute_auc(outputs, data)
-
+    
     def _evaluate_test_metrics(self, model, data):
         """
         Evaluate test metrics (AUC, Precision, Recall, F1).
@@ -169,6 +168,7 @@ class GraphTrainingPipeline:
             )
             probs = outputs.cpu().view(-1).numpy()
             preds = (probs > 0.5).astype(int)
+
             return {
                 "auc": roc_auc_score(data["label_ids"].numpy(), probs),
                 "precision": precision_score(data["label_ids"].numpy(), preds),

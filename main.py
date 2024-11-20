@@ -1,4 +1,5 @@
 from models.graph_training_pipeline import GraphTrainingPipeline
+import torch 
 
 config = {
     "playlist_embedding_dim": 64,
@@ -11,5 +12,8 @@ config = {
     "optimizer": "adam",
 }
 
-pipeline = GraphTrainingPipeline(cur_dir="data/", model_arch="GraphSAGE", device="cuda", config=config)
+# Automatically determine the device
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+pipeline = GraphTrainingPipeline(cur_dir="data/", model_arch="GraphSAGE", device=device, config=config)
 pipeline.train()
