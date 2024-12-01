@@ -32,6 +32,7 @@ To get started, clone this repository and install the necessary dependencies. Th
 
 2. **Install dependencies:**
    ```bash
+   # If you are going to run the graph code, you should use python3.9
    pip install -r requirements.txt
    ```
 

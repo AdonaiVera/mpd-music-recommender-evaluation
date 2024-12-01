@@ -1,5 +1,6 @@
 # Files
 .DS_Store
+evaluation/__pycache__/
 
 # Ignore data 
 data/
@@ -7,3 +8,7 @@ data_x/
 
 # Folders
 models/weights/
+
+# Enviroments
+env/
+venv/

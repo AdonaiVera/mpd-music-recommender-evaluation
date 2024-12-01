@@ -84,12 +84,14 @@ class DataManager:
         """
         Saves the trained model weights.
         """
-        torch.save(model.state_dict(), os.path.join(self.model_dir, "model_weights.pth"))
+        os.makedirs(self.model_dir, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(self.model_dir, "model_graphsage.pth"))
 
     def save_training_data(self, output_data):
         """
         Saves training metrics to a CSV file.
         """
+
         metrics_df = pd.DataFrame({
             "Epoch": list(range(1, len(output_data["train_losses"]) + 1)),
             "Loss": output_data["train_losses"],
@@ -100,7 +102,8 @@ class DataManager:
             "Recall": output_data["recall_scores"],
             "F1 Score": output_data["f1_scores"],
         })
-        metrics_df.to_csv(os.path.join(self.model_dir, "training_metrics.csv"), index=False)
+
+        metrics_df.to_csv("results/training_metrics.csv", index=False)
 
     # Update info.json
     def update_info(self, **kwargs):

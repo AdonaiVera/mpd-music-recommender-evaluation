@@ -99,10 +99,12 @@ class SpotifyGraphPreprocessor:
                             "song_id": song_id_map[track_uri],
                             "label": 1  # Positive edge
                         })
-
+                    
                     # Add negative edges
                     all_song_ids = set(song_id_map.values())
+
                     negative_song_ids = all_song_ids - playlist_song_ids
+
                     for neg_song_id in random.sample(negative_song_ids, min(len(negative_song_ids), len(playlist_song_ids))):
                         edge_data.append({
                             "playlist_id": playlist_id_counter,

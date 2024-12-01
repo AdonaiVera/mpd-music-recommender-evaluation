@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import roc_auc_score, precision_score, recall_score, f1_score
-import plotly.graph_objects as go
+
 from methods.data_utils import DataManager
+import numpy as np
+from evaluation.visualizate_graphs import create_loss_auc_plot
 
 class GraphSAGELinkPrediction(nn.Module):
     def __init__(self, num_playlists, num_songs, playlist_dim, song_dim, dropout_prob):
@@ -56,7 +58,8 @@ class GraphTrainingPipeline:
             )
 
         trained_model, output_data = self._train_model(parsed_data, model)
-        fig, config = self._create_loss_auc_plot(
+        fig, config = create_loss_auc_plot(
+            self, 
             output_data["train_losses"],
             output_data["train_auc_scores"],
             output_data["val_auc_scores"],
@@ -91,7 +94,7 @@ class GraphTrainingPipeline:
             "test_auc_scores": [],
             "precision_scores": [],
             "recall_scores": [],
-            "f1_scores": [],
+            "f1_scores": []
         }
 
         for epoch in range(self.config["num_epochs"]):
@@ -106,6 +109,7 @@ class GraphTrainingPipeline:
                 outputs.view(-1),
                 parsed_data["train"]["label_ids"].to(self.device, dtype=torch.float),
             )
+
             metrics["train_losses"].append(loss.item())
             loss.backward()
             optimizer.step()
@@ -114,6 +118,7 @@ class GraphTrainingPipeline:
                 train_auc = self._compute_auc(outputs, parsed_data["train"])
                 val_auc = self._evaluate_auc(model, parsed_data["val"])
                 test_metrics = self._evaluate_test_metrics(model, parsed_data["test"])
+            
 
             metrics["train_auc_scores"].append(train_auc)
             metrics["val_auc_scores"].append(val_auc)
@@ -128,12 +133,11 @@ class GraphTrainingPipeline:
                     f"Loss: {loss.item():.4f}, Train AUC: {train_auc:.4f}, "
                     f"Validation AUC: {val_auc:.4f}, Test AUC: {test_metrics['auc']:.4f}, "
                     f"Precision: {test_metrics['precision']:.4f}, "
-                    f"Recall: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}"
+                    f"Recall: {test_metrics['recall']:.4f}, F1: {test_metrics['f1']:.4f}, "
                 )
 
         return model, metrics
-
-
+    
     def _compute_auc(self, outputs, data):
         """
         Compute AUC for predictions with single-class handling.
@@ -157,6 +161,19 @@ class GraphTrainingPipeline:
             )
         return self._compute_auc(outputs, data)
     
+    def _evaluate_test_outputs(self, model, test_data):
+        """
+        Get final test outputs for evaluation.
+        """
+        model.eval()
+        with torch.no_grad():
+            outputs = model(
+                test_data["playlist_ids"].to(self.device),
+                test_data["song_ids"].to(self.device),
+            )
+        return outputs.cpu().view(-1).numpy()
+
+
     def _evaluate_test_metrics(self, model, data):
         """
         Evaluate test metrics (AUC, Precision, Recall, F1).
@@ -176,128 +193,3 @@ class GraphTrainingPipeline:
                 "recall": recall_score(data["label_ids"].numpy(), preds),
                 "f1": f1_score(data["label_ids"].numpy(), preds),
             }
-
-    def _create_loss_auc_plot(self, train_losses, train_auc, val_auc, test_auc, num_playlists, save_path):
-        """
-        Create and save a polished and interactive visualization for loss and AUC metrics over epochs.
-        """
-        epochs = list(range(1, self.config["num_epochs"] + 1))
-
-        fig = go.Figure()
-
-        # Add traces for each metric
-        fig.add_trace(
-            go.Scatter(
-                x=epochs,
-                y=train_losses,
-                mode="lines",
-                name="Train Loss",
-                line=dict(color="red", dash="dot"),
-                hovertemplate="Epoch %{x}<br>Loss: %{y:.4f}<extra></extra>"
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=epochs,
-                y=train_auc,
-                mode="lines+markers",
-                name="Train AUC",
-                line=dict(color="blue", width=2),
-                marker=dict(size=6, symbol="circle"),
-                hovertemplate="Epoch %{x}<br>Train AUC: %{y:.4f}<extra></extra>"
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=epochs,
-                y=val_auc,
-                mode="lines+markers",
-                name="Validation AUC",
-                line=dict(color="green", width=2),
-                marker=dict(size=6, symbol="square"),
-                hovertemplate="Epoch %{x}<br>Validation AUC: %{y:.4f}<extra></extra>"
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=epochs,
-                y=test_auc,
-                mode="lines+markers",
-                name="Test AUC",
-                line=dict(color="orange", width=2),
-                marker=dict(size=6, symbol="triangle-up"),
-                hovertemplate="Epoch %{x}<br>Test AUC: %{y:.4f}<extra></extra>"
-            )
-        )
-
-        # Update layout for polished aesthetics
-        fig.update_layout(
-            title=dict(
-                text=f"<b>Training Metrics Over Epochs</b><br><span style='font-size:14px'>Playlists: {num_playlists}</span>",
-                x=0.5,
-                y=0.9,
-                font=dict(family="Arial", size=24)
-            ),
-            xaxis=dict(
-                title="Epochs",
-                titlefont=dict(size=16),
-                tickfont=dict(size=12),
-                showgrid=True,
-                gridcolor="lightgrey"
-            ),
-            yaxis=dict(
-                title="Metrics (Loss / AUC)",
-                titlefont=dict(size=16),
-                tickfont=dict(size=12),
-                showgrid=True,
-                gridcolor="lightgrey",
-                range=[0, 1]  # Ensures values are always in a valid range
-            ),
-            width=1000,
-            height=600,
-            legend=dict(
-                title="Legend",
-                font=dict(size=12),
-                orientation="h",
-                y=-0.2,
-                x=0.5,
-                xanchor="center"
-            ),
-            margin=dict(l=40, r=40, t=80, b=60),
-            hovermode="x unified",
-            template="plotly_white"
-        )
-
-        # Add annotations to highlight significant points (optional)
-        fig.add_annotation(
-            x=epochs[-1],
-            y=train_losses[-1],
-            text=f"Final Loss: {train_losses[-1]:.4f}",
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-40
-        )
-        fig.add_annotation(
-            x=epochs[-1],
-            y=test_auc[-1],
-            text=f"Final Test AUC: {test_auc[-1]:.4f}",
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=40
-        )
-
-        # Config for interactivity
-        config = {
-            "scrollZoom": True,
-            "displayModeBar": True,
-            "staticPlot": False,
-            "displaylogo": False
-        }
-
-        # Save the plot
-        fig.write_html(save_path, config=config)
-        print(f"Plot saved at: {save_path}")
-
-        return fig, config
