@@ -14,6 +14,8 @@ DATASET_URL = "https://storage.googleapis.com/tecla/spotify-million-playlist-dat
 TRACKS_DF_FILENAME = "tracks_df.csv"
 PLAYLISTS_DF_FILENAME = "playlists_df.csv"
 PLAYLIST_TRACKS_DF_FILENAME = "playlist_tracks_df.csv"
+IS_DEVELOPMENT = True # False is production and True for development
+DEVELOPMENT_LIMIT = 5
 
 
 playlists_df_list, tracks_df_list = [], []
@@ -151,7 +153,7 @@ def process_slice(slice):
         playlists_df_list.append(playlist)
 
 
-def pre_process_dataset(path, new_path):
+def pre_process_dataset(path, new_path, IS_DEVELOPMENT = False):
     '''
     Given the directory of the dataset, for each slice first modified it by
     the rules described in generate_new_slice.
@@ -183,6 +185,7 @@ def pre_process_dataset(path, new_path):
 
     filenames = os.listdir(path)
     # go through each file in the directory
+    file_count = 0
     for filename in tqdm(filenames):
         # check if the file is a slice of the dataset
         if filename.startswith("mpd.slice.") and filename.endswith(".json"):
@@ -192,6 +195,9 @@ def pre_process_dataset(path, new_path):
 
             # process this slice
             process_slice(mpd_slice)
+            file_count += 1
+            if file_count == DEVELOPMENT_LIMIT and IS_DEVELOPMENT:
+                break
 
     del track_uri_to_id
     # generate tracks_df and playlists_df
@@ -284,17 +290,17 @@ def download_and_extract_dataset(url, filepath, extract_to):
         print("Failed to download the dataset. Please check the URL.")
 
 if __name__ == "__main__":
-    # Create data and exploration_results folders if they don't exist
-    for folder in [DATA_FOLDER, DATA_RAW]:
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-            print(f"Created folder: {folder}")
-        else:
-            print(f"Folder already exists: {folder}")
+    # # Create data and exploration_results folders if they don't exist
+    # for folder in [DATA_FOLDER, DATA_RAW]:
+    #     if not os.path.exists(folder):
+    #         os.makedirs(folder)
+    #         print(f"Created folder: {folder}")
+    #     else:
+    #         print(f"Folder already exists: {folder}")
 
-    if not os.path.exists("{}/data".format(DATA_RAW)):
-        print(f"[INFO] Downloading the data ...")
-        download_and_extract_dataset(DATASET_URL, "data/row_data.zip", DATA_RAW)
+    # if not os.path.exists("{}/data".format(DATA_RAW)):
+    #     print(f"[INFO] Downloading the data ...")
+    #     download_and_extract_dataset(DATASET_URL, "data/row_data.zip", DATA_RAW)
 
     # Pre-process the dataset
-    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED)
+    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED, IS_DEVELOPMENT)
