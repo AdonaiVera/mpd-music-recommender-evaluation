@@ -12,16 +12,12 @@ def get_class(class_divpnt, idx):
 def get_class_dist(cls_list, num_cls):
     cls_dist = [1e-9] * num_cls
     for i in cls_list:
-        if i is not -1:
+        if i != -1:
             cls_dist[i]+=1
     return cls_dist
 
 
-def get_r_precision(answer, cand, answer_cls, class_divpnt):
-    num_cls = len(class_divpnt) + 1
-    hr_by_cls = [0] * num_cls
-    cls_dist = get_class_dist(answer_cls, num_cls)
-
+def get_r_precision(answer, cand):
     set_answer = set(answer)
     r = len(set_answer&set(cand[:len(answer)])) / len(answer)
     return r
@@ -48,14 +44,14 @@ def get_rsc(answer, cand):
             return i//10
     return 51
 
-def get_metrics(answer,cand, answer_cls, num_cls):
-    r_precision, hr_by_cls, cand_cls_dist = get_r_precision(answer,cand, answer_cls, num_cls)
+def get_metrics(answer, cand):
+    r_precision = get_r_precision(answer, cand)
     # ndcg = get_ndcg(answer,cand)
     # rsc = get_rsc(answer,cand)
     
-    return r_precision, hr_by_cls, cand_cls_dist
+    return r_precision
 
-def single_eval(scores, seed, answer, answer_cls, num_cls):
+def single_eval(scores, seed, answer):
     cand = np.argsort(-1*scores)
     cand = cand.tolist()
     #print("sort:",np.sort(-1*scores)[:10])
@@ -66,5 +62,5 @@ def single_eval(scores, seed, answer, answer_cls, num_cls):
         except:
             pass
     cand = cand[:500]
-    rprecision, hr_by_cls, cand_cls_dist = get_metrics(answer,cand, answer_cls, num_cls)
-    return rprecision, hr_by_cls, cand_cls_dist
+    rprecision = get_metrics(answer, cand)
+    return rprecision
