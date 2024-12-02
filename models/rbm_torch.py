@@ -167,7 +167,7 @@ class RBMHandler:
                 seeds_batch = [self.get_ground_truth_for_user(pid, DF) for pid in batch_playlist_ids]
 
                 rprecision_batch = []
-                for scores, seeds, playlist_id in zip(scores_batch, seeds_batch, batch_playlist_ids.unique()):
+                for scores, seeds, playlist_id in zip(scores_batch, seeds_batch, batch_playlist_ids):
                     # Get the ground truth and class labels for the user
                     answer = self.get_ground_truth_for_user(playlist_id, DF)
                     rprecision = single_eval(scores, seed=seeds, answer=answer)
