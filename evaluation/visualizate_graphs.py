@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+import networkx as nx
 
 def create_bar_plot(train_metrics, test_metrics, save_path="results/metrics_bar_plot.png"):
     """
@@ -153,3 +154,59 @@ def create_loss_auc_plot(self, train_losses, train_auc, val_auc, test_auc, num_p
     print(f"Plot saved at: {save_path}")
 
     return fig, config
+
+def plot_graph(edges, node_labels=None, save_path=None, title="Graph Visualization", 
+               sample_size=None):
+    """
+    Plot a graph with nodes and edges using NetworkX, with optional edge sampling.
+
+    :param edges: DataFrame or iterable of edges (source, target).
+    :param node_labels: Optional dictionary of node labels (e.g., {node_id: "Label"}).
+    :param save_path: Path to save the plot.
+    :param title: Title for the graph.
+    :param sample_size: Number of edges to randomly sample (default: include all).
+    """
+    # Sample edges if sample_size is provided
+    if sample_size and sample_size < len(edges):
+        edges = edges.sample(n=sample_size, random_state=42)
+
+    # Create a graph object
+    G = nx.Graph()
+
+    # Add edges to the graph
+    for _, row in edges.iterrows():
+        G.add_edge(row["playlist_id"], row["song_id"])
+
+    # Assign node colors based on type (playlist or song)
+    node_colors = []
+    for node in G.nodes():
+        if node in edges["playlist_id"].unique():
+            node_colors.append("lightgreen")  # Playlists: Green
+        elif node in edges["song_id"].unique():
+            node_colors.append("lightblue")  # Songs: Blue
+        else:
+            node_colors.append("gray")  # Default: Gray
+
+    # Layout for the graph
+    pos = nx.spring_layout(G, seed=42)  # Seed for consistent layout
+
+    # Draw the graph
+    plt.figure(figsize=(12, 8))
+    nx.draw(
+        G,
+        pos,
+        with_labels=(node_labels is not None),
+        labels=node_labels,
+        node_size=500,
+        node_color=node_colors,
+        edge_color="gray",
+        font_size=10,
+        font_color="black",
+    )
+    plt.title(title, fontsize=16)
+
+    # Save or show the plot
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Graph saved at: {save_path}")
+    plt.show()

@@ -61,7 +61,7 @@ class SpotifyGraphPreprocessor:
         song_id_map = {}
         song_id_counter = 0
         playlist_id_counter = 0
-        limit = 5
+        limit = 20
         nCount = 0  
 
         for json_file in os.listdir(self.raw_folder_data):

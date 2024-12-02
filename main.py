@@ -1,5 +1,6 @@
 from models.graph_training_pipeline import GraphTrainingPipeline
-import torch 
+import torch
+import time
 
 config = {
     "playlist_embedding_dim": 64,
@@ -16,4 +17,14 @@ config = {
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 pipeline = GraphTrainingPipeline(cur_dir="data/", model_arch="GraphSAGE", device=device, config=config)
+
+# Measure training time
+start_time = time.time()
+
 pipeline.train()
+
+end_time = time.time()
+
+# Print elapsed time
+elapsed_time = end_time - start_time
+print(f"Training completed in {elapsed_time:.2f} seconds ({elapsed_time / 60:.2f} minutes).")
