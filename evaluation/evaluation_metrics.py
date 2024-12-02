@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import torch
 
 
 def get_class(class_divpnt, idx):
@@ -46,21 +47,24 @@ def get_rsc(answer, cand):
 
 def get_metrics(answer, cand):
     r_precision = get_r_precision(answer, cand)
-    # ndcg = get_ndcg(answer,cand)
-    # rsc = get_rsc(answer,cand)
+    ndcg = get_ndcg(answer,cand)
+    rsc = get_rsc(answer,cand)
     
-    return r_precision
+    return r_precision, ndcg, rsc
 
-def single_eval(scores, seed, answer):
-    cand = np.argsort(-1*scores)
-    cand = cand.tolist()
-    #print("sort:",np.sort(-1*scores)[:10])
-    #print("cand:",cand[:10])
-    for i in seed:
-        try:
-            cand.remove(i)
-        except:
-            pass
-    cand = cand[:500]
-    rprecision = get_metrics(answer, cand)
-    return rprecision
+def single_eval(scores, answer, k=10):
+    scores = scores.numpy()
+    
+    # Sort the scores in descending order and get the indices of the top k
+    top_k_indices = np.argsort(scores)[::-1][:k]
+    
+    # Calculate the number of seed tracks that appear in the top k
+    relevant_items = set(answer)  # Convert seed to a set for faster lookup
+    retrieved_items = set(top_k_indices)  # The indices of the top-k items
+
+    # Calculate the intersection of the retrieved items and the seed tracks
+    true_positives = len(relevant_items.intersection(retrieved_items))
+
+    # R-Precision is the proportion of relevant items in the top-k
+    r_precision = true_positives / min(k, len(answer)) 
+    return r_precision
