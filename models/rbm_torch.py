@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from evaluation.evaluation_metrics import single_eval
+from evaluation.evaluation_metrics import single_eval, get_metrics
 from methods.preprocess_rbm import DataRBM
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -50,7 +50,7 @@ class RBM(nn.Module):
     
 
 class RBMHandler:
-    def __init__(self, visible_units, device, dataHandler, hidden_units = 100, learning_rate = 0.01, epochs = 10, batch_size = 32):
+    def __init__(self, visible_units, device, dataHandler, hidden_units = 100, learning_rate = 0.001, epochs = 35, batch_size = 32):
         self.visible_units = visible_units
         self.hidden_units = hidden_units
         self.learning_rate = learning_rate
@@ -65,6 +65,8 @@ class RBMHandler:
 
         self.optimizer = optim.SGD(self.rbm.parameters(), lr=self.learning_rate)
         print("Optimiser INIT")
+
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1)
 
     def contrastiveDivergence(self, rbm, v, k=1):
         # Step 1: Positive phase (data -> hidden)
@@ -85,8 +87,12 @@ class RBMHandler:
         return positive_grad, negative_grad
 
     def trainModel(self, training_data):
-        self.training_data = training_data        
-        self.training_dataset = TensorDataset(self.training_data)
+        self.training_data = training_data 
+        if training_data.is_sparse:
+            self.training_dataset = TensorDataset(self.training_data.to_dense())
+        else:
+            self.training_dataset = TensorDataset(self.training_data)
+                   
         dataloader = DataLoader(self.training_dataset, batch_size=self.batch_size, shuffle=True)
 
         for epoch in range(self.epochs):
@@ -94,6 +100,9 @@ class RBMHandler:
             for data in dataloader:
                 v = data[0].to(device)  # Data is a batch of playlist-track matrix rows
                 
+                if v.is_sparse:
+                    v = v.to_dense()
+
                 # Compute Contrastive Divergence
                 positive_grad, negative_grad = self.contrastiveDivergence(self.rbm, v, k=1)
                 
@@ -110,10 +119,15 @@ class RBMHandler:
                 torch.cuda.empty_cache()
 
             print(f"Epoch {epoch+1}/{self.epochs}, Loss: {epoch_loss / len(dataloader)}")
+            self.scheduler.step()
 
-    def validateModel(self, test_data, test_batch_size = 0):
+    def validateModel(self, test_data, test_batch_size = 16):
         batch_size = self.batch_size if test_batch_size == 0 else test_batch_size
-        dataset_reconstruction = TensorDataset(test_data)
+
+        if test_data.is_sparse:
+            dataset_reconstruction = TensorDataset(test_data.to_dense())
+        else:
+            dataset_reconstruction = TensorDataset(test_data)
         dataloader_reconstruction = DataLoader(dataset_reconstruction, batch_size=batch_size, shuffle=False)
 
         reconstructed_scores_list = []
@@ -123,17 +137,20 @@ class RBMHandler:
 
             for data in dataloader_reconstruction:
                 v = data[0].to(self.device)  # Move the batch to GPU
+
+                if v.is_sparse:
+                    v = v.to_dense()
+
                 # Perform forward pass (reconstruction)
                 reconstructed_batch = self.rbm.sample_v(self.rbm.sample_h(v))
                 # Compute loss or other metrics here if necessary
-                # Example loss computation (optional):
                 loss = torch.mean((v - reconstructed_batch) ** 2)  # Reconstruction error
                 epoch_loss += loss.item()
-                reconstructed_scores_list.append(reconstructed_batch.cpu())
+                reconstructed_scores_list.append(reconstructed_batch)
 
             print(f"Reconstruction error: {epoch_loss / len(dataloader_reconstruction)}")
 
-        self.reconstructed_scores = torch.cat(reconstructed_scores_list, dim=0).numpy() # Reconstruct the playlist matrix
+        self.reconstructed_scores = torch.cat(reconstructed_scores_list, dim=0).cpu().numpy() # Reconstruct the playlist matrix
         torch.cuda.empty_cache() # Clean up GPU memory after reconstruction
 
 
@@ -143,39 +160,49 @@ class RBMHandler:
         ground_truth = df[df['pid'] == playlist_id]['track_id'].values.tolist()
         return ground_truth
 
-    def evaluateModel(self):
+    def evaluateModel(self, GROUND_TRUTH_DATA, DATA_FOR_PLAYLISTS):
         # Wrap the playlist tensor into a DataLoader
-        DF = self.dataHandler.raw
-        batch_size = 16
-        playlist_ids = DF['pid'].unique()
-        playlist_tensor = torch.tensor(playlist_ids, dtype=torch.long)  # Tensor of playlist IDs
-        playlist_dataset = TensorDataset(playlist_tensor)  # Create a dataset from the playlist IDs
+        batch_size = 32
+        
+        # Create a DataLoader for the test dataset
+        playlist_tensor = torch.arange(len(DATA_FOR_PLAYLISTS), dtype=torch.long)  # Playlist IDs from 0 to the number of playlists
+        playlist_dataset = TensorDataset(playlist_tensor)  # TensorDataset holds the playlist IDs
         playlist_dataloader = DataLoader(playlist_dataset, batch_size=batch_size, shuffle=False)
-        RECONSTRUCTED_SCORES = self.reconstructed_scores
+    
+        RECONSTRUCTED_SCORES = torch.tensor(self.reconstructed_scores, dtype=torch.float32)
         # Loop through each batch in the DataLoader and evaluate
         with torch.no_grad():
             all_rprecision = []
+            # all_ndcg = []
+            # all_rsc = []
 
             for data in playlist_dataloader:
                 # Get the playlist_ids for the current batch
-                batch_playlist_ids = data[0].numpy()  # Playlist IDs for this batch
+                batch_indices = data[0].numpy()
                 
                 # Extract the scores for the batch
-                scores_batch = RECONSTRUCTED_SCORES[batch_playlist_ids]
-                
-                # Extract the ground truth for the batch (e.g., the seed tracks)
-                seeds_batch = [self.get_ground_truth_for_user(pid, DF) for pid in batch_playlist_ids]
+                scores_batch = RECONSTRUCTED_SCORES[batch_indices]
 
                 rprecision_batch = []
-                for scores, seeds, playlist_id in zip(scores_batch, seeds_batch, batch_playlist_ids):
+                # ndcg_batch = []
+                # rsc_batch = []
+                for scores, playlist_index in zip(scores_batch, batch_indices):
                     # Get the ground truth and class labels for the user
-                    answer = self.get_ground_truth_for_user(playlist_id, DF)
-                    rprecision = single_eval(scores, seed=seeds, answer=answer)
+                    playlist_id = DATA_FOR_PLAYLISTS.iloc[playlist_index]["pid"]
+                    answer = self.get_ground_truth_for_user(playlist_id.item(), GROUND_TRUTH_DATA)
+                    rprecision = single_eval(scores, answer=answer)
                     rprecision_batch.append(rprecision)
+                    # ndcg_batch.append(ndcg)
+                    # rsc_batch.append(rsc)
 
                 all_rprecision.extend(rprecision_batch)
+                # all_ndcg.extend(ndcg_batch)
+                # all_rsc.extend(rsc_batch)
             
-            print(f"Overall R-Precision: {rprecision}")
+            overall_rprecision = torch.tensor(all_rprecision).mean().item()
+            # overall_ndcg = torch.tensor(all_ndcg).mean().item()
+            # overall_rsc = torch.tensor(all_rsc).mean().item()
+            print(f"Overall R-Precision: {overall_rprecision}") #, NDCG: {overall_ndcg}, RSC: {overall_rsc}")
         
         torch.cuda.empty_cache() # Clean up GPU memory after evaluation
 
@@ -192,19 +219,19 @@ class RBMHandler:
 
 
 DATA_HANDLER = DataRBM(playlist_track_file_path="data/processed/playlist_tracks_df.csv")
-DATA_HANDLER.preprocessForTorch()
-MATRIX_DATA = DATA_HANDLER.preprocessed_torch
-MATRIX_DATA = MATRIX_DATA.to(device)
+DATA_HANDLER.preprocess()
+MATRIX_DATA = DATA_HANDLER.train_preprocessed
 
+MATRIX_DATA = MATRIX_DATA.to(device)
 visible_units = MATRIX_DATA.shape[1]
 # Hyperparameters
 
 rbmHandler = RBMHandler(visible_units=visible_units, device=device, dataHandler=DATA_HANDLER)
 rbmHandler.trainModel(MATRIX_DATA)
 
-rbmHandler.validateModel(MATRIX_DATA, 16)
+TEST_MATRIX_DATA = DATA_HANDLER.test_preprocessed
+TEST_MATRIX_DATA = TEST_MATRIX_DATA.to(device)
+rbmHandler.validateModel(TEST_MATRIX_DATA, 16)
 
-DF = DATA_HANDLER.raw
-
-rbmHandler.evaluateModel()
-rbmHandler.predict(data=MATRIX_DATA)
+rbmHandler.evaluateModel(GROUND_TRUTH_DATA=DATA_HANDLER.raw, DATA_FOR_PLAYLISTS=DATA_HANDLER.test_data)
+rbmHandler.predict(data=TEST_MATRIX_DATA)
