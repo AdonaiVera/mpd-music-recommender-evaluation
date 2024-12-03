@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from evaluation.evaluation_metrics import single_eval, get_metrics
 from methods.preprocess_rbm import DataRBM
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
@@ -17,7 +17,7 @@ print(device)
 if device.type == "cuda":
     torch.cuda.set_device(int(os.environ["CUDA_VISIBLE_DEVICES"]))
     # Limit memory growth on the GPU
-    # torch.cuda.set_per_process_memory_fraction(0.5, device=int(os.environ["CUDA_VISIBLE_DEVICES"]))  # Limit memory usage to 50% of the total GPU memory on device 0
+    torch.cuda.set_per_process_memory_fraction(0.5, device=int(os.environ["CUDA_VISIBLE_DEVICES"]))  # Limit memory usage to 50% of the total GPU memory on device 0
 
 
 class RBM(nn.Module):
@@ -50,7 +50,7 @@ class RBM(nn.Module):
     
 
 class RBMHandler:
-    def __init__(self, visible_units, device, dataHandler, hidden_units = 100, learning_rate = 0.001, epochs = 35, batch_size = 32):
+    def __init__(self, visible_units, device, dataHandler, hidden_units = 100, learning_rate = 0.1, epochs = 200, batch_size = 32):
         self.visible_units = visible_units
         self.hidden_units = hidden_units
         self.learning_rate = learning_rate
@@ -66,7 +66,7 @@ class RBMHandler:
         self.optimizer = optim.SGD(self.rbm.parameters(), lr=self.learning_rate)
         print("Optimiser INIT")
 
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.1)
 
     def contrastiveDivergence(self, rbm, v, k=1):
         # Step 1: Positive phase (data -> hidden)
