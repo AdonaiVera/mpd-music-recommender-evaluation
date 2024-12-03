@@ -290,17 +290,17 @@ def download_and_extract_dataset(url, filepath, extract_to):
         print("Failed to download the dataset. Please check the URL.")
 
 if __name__ == "__main__":
-    # # Create data and exploration_results folders if they don't exist
-    # for folder in [DATA_FOLDER, DATA_RAW]:
-    #     if not os.path.exists(folder):
-    #         os.makedirs(folder)
-    #         print(f"Created folder: {folder}")
-    #     else:
-    #         print(f"Folder already exists: {folder}")
+    # Create data and exploration_results folders if they don't exist
+    for folder in [DATA_FOLDER, DATA_RAW]:
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            print(f"Created folder: {folder}")
+        else:
+            print(f"Folder already exists: {folder}")
 
-    # if not os.path.exists("{}/data".format(DATA_RAW)):
-    #     print(f"[INFO] Downloading the data ...")
-    #     download_and_extract_dataset(DATASET_URL, "data/row_data.zip", DATA_RAW)
+    if not os.path.exists("{}/data".format(DATA_RAW)):
+        print(f"[INFO] Downloading the data ...")
+        download_and_extract_dataset(DATASET_URL, "data/row_data.zip", DATA_RAW)
 
     # Pre-process the dataset
     pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED, IS_DEVELOPMENT)
