@@ -15,9 +15,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 if device.type == "cuda":
-    torch.cuda.set_device(int(os.environ["CUDA_VISIBLE_DEVICES"]))
+    torch.cuda.set_device(0)
     # Limit memory growth on the GPU
-    torch.cuda.set_per_process_memory_fraction(0.5, device=int(os.environ["CUDA_VISIBLE_DEVICES"]))  # Limit memory usage to 50% of the total GPU memory on device 0
+    torch.cuda.set_per_process_memory_fraction(0.5, device=0)  # Limit memory usage to 50% of the total GPU memory on device 0
 
 
 class RBM(nn.Module):
@@ -226,7 +226,7 @@ MATRIX_DATA = MATRIX_DATA.to(device)
 visible_units = MATRIX_DATA.shape[1]
 # Hyperparameters
 
-rbmHandler = RBMHandler(visible_units=visible_units, device=device, dataHandler=DATA_HANDLER)
+rbmHandler = RBMHandler(visible_units=visible_units, device=device, dataHandler=DATA_HANDLER, batch_size=32)
 rbmHandler.trainModel(MATRIX_DATA)
 
 TEST_MATRIX_DATA = DATA_HANDLER.test_preprocessed
