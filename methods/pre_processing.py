@@ -14,6 +14,8 @@ DATASET_URL = "https://storage.googleapis.com/tecla/spotify-million-playlist-dat
 TRACKS_DF_FILENAME = "tracks_df.csv"
 PLAYLISTS_DF_FILENAME = "playlists_df.csv"
 PLAYLIST_TRACKS_DF_FILENAME = "playlist_tracks_df.csv"
+IS_DEVELOPMENT = True # False is production and True for development
+DEVELOPMENT_LIMIT = 5
 
 
 playlists_df_list, tracks_df_list = [], []
@@ -151,7 +153,8 @@ def process_slice(slice):
         playlists_df_list.append(playlist)
 
 
-def pre_process_dataset(path, new_path, small_version=False):
+
+def pre_process_dataset(path, new_path, IS_DEVELOPMENT = False):
     '''
     Given the directory of the dataset, for each slice first modified it by
     the rules described in generate_new_slice.
@@ -187,6 +190,7 @@ def pre_process_dataset(path, new_path, small_version=False):
     limit = 5
     nCount = 0  
     # go through each file in the directory
+    file_count = 0
     for filename in tqdm(filenames):
         # check if the file is a slice of the dataset
         if filename.startswith("mpd.slice.") and filename.endswith(".json"):
@@ -197,9 +201,9 @@ def pre_process_dataset(path, new_path, small_version=False):
 
             # process this slice
             process_slice(mpd_slice)
-            nCount+=1
-            
-            if nCount==limit and small_version:
+
+            file_count += 1
+            if file_count == DEVELOPMENT_LIMIT and IS_DEVELOPMENT:
                 break
 
     del track_uri_to_id
@@ -309,4 +313,4 @@ if __name__ == "__main__":
     small_version = True
 
     # Pre-process the dataset
-    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED, small_version)
+    pre_process_dataset("{}/data".format(DATA_RAW), DATA_PROCESSED, IS_DEVELOPMENT)

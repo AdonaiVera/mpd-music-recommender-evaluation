@@ -62,7 +62,7 @@ Here's an overview of the project structure:
 To download, preprocess, and save the dataset, run the following command:
 
 ```bash
-python methods/pre-process.py
+python methods/pre_processing.py
 ```
 
 ### Steps
