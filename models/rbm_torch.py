@@ -63,7 +63,7 @@ class RBMHandler:
         self.rbm = RBM(self.visible_units, self.hidden_units).to(device)
         print("RBM INIT")
 
-        self.optimizer = optim.SGD(self.rbm.parameters(), lr=self.learning_rate)
+        self.optimizer = optim.adam(self.rbm.parameters(), lr=self.learning_rate)
         print("Optimiser INIT")
 
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=50, gamma=0.1)
