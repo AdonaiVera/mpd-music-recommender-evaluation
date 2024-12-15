@@ -1,0 +1,7 @@
+Metric,1-Hour Training,16-Hour Training
+Hit-Ratio@10,0.579,0.711
+MAP@10,0.252,0.482
+MRR@10,0.2555,0.4925
+R-Precision,0.1941,0.4171
+NDCG,0.4261,0.6529
+Click Rate,3.9784,2.5348

@@ -67,4 +67,5 @@ def single_eval(scores, seed, answer, answer_cls, num_cls):
             pass
     cand = cand[:500]
     rprecision, hr_by_cls, cand_cls_dist = get_metrics(answer,cand, answer_cls, num_cls)
+
     return rprecision, hr_by_cls, cand_cls_dist
