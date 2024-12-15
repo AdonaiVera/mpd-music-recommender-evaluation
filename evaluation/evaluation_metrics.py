@@ -68,3 +68,4 @@ def single_eval(scores, answer, k=10):
     # R-Precision is the proportion of relevant items in the top-k
     r_precision = true_positives / min(k, len(answer)) 
     return r_precision
+
