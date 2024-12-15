@@ -32,6 +32,7 @@ To get started, clone this repository and install the necessary dependencies. Th
 
 2. **Install dependencies:**
    ```bash
+   # If you are going to run the graph code, you should use python3.9
    pip install -r requirements.txt
    ```
 
@@ -100,6 +101,34 @@ While basic preprocessing has been done, the next recommended step is to perform
    - Generate plots to visualize popular tracks, artists, one-hit wonders, and duration distributions.
 
    *Tip:* You can create these plots using functions in the `plots.py` file and extend the analysis in `analysis.py`.
+
+
+## Graphs Information
+GraphSAGE-based recommendation model to predict playlist-song relevance by learning embeddings for playlists and songs, optimizing performance using weighted loss, and tracking metrics like AUC, precision, recall, and F1-score.
+
+
+GraphSAGE (Graph Sample and Aggregate): 
+Keys: 
+1. Instead of using the entire graph, GraphSAGE samples a fixed number of neighbors for each node at each layer.
+2. For each node, GraphSAGE aggregates features from its sampled neighbors
+3. Recursive Neighborhood Expansion
+
+Steps:
+1. GraphSAGE looks at the nodes it's connected to (its neighbors, like songs in the playlist).
+2. GraphSAGE combines information from all the connected neighbors. For example, for a playlist, it looks at all its songs and "summarizes" their features.
+3. GraphSAGE mixes this summary with the original node's features (like the playlist name). This creates a new, richer version of the playlist's information.
+4. GraphSAGE repeats this process for a few layers, so the node's updated information now includes details from neighbors, neighbors' neighbors, and so on.
+5. The model has a learned embedding (a set of numbers) that captures all the relevant connections and features from the graph.
+6. These embeddings are used to predict relationship
+
+### Small version: 
+Train, validation, and test splits created.
+Total Songs: 122902
+Total Playlists: 6000
+Total Edges: 394387
+
+Nodes: Songs, playlist
+Edges: Representing user interactions as graph connections.
 
 ## Future Work
 
